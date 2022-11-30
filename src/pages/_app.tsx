@@ -5,13 +5,11 @@ import { theme } from '../chakra/theme'
 import Layout from '../components/Layout/Layout'
 import { RecoilRoot } from 'recoil'
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ pageProps }: AppProps) {
 	return (
 		<RecoilRoot>
 			<ChakraProvider theme={theme}>
-				<Layout>
-					<Component {...pageProps} />
-				</Layout>
+				<Layout {...pageProps}/>
 			</ChakraProvider>
 		</RecoilRoot>
 	)
