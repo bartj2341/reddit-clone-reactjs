@@ -81,7 +81,7 @@ const NewPostForm: React.FC<NewPostFormProps> = ({ user }) => {
 			// check for selectedFile
 			if(selectedFile) {
 				// store in storage => getDownloadURL (return imageURL)
-				const imageRef = ref(storage, `posts/${[postDocRef.id]}`)
+				const imageRef = ref(storage, `posts/${[postDocRef.id]}/image`)
 				await uploadString(imageRef, selectedFile, 'data_url');
 				const downloadURL = await getDownloadURL(imageRef);
 
