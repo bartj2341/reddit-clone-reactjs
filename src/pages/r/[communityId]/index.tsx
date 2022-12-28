@@ -18,17 +18,17 @@ type CommunityPageProps = {
 
 const CommunityPage:React.FC<CommunityPageProps> = ({ communityData }) => {
     const setCommunityStateValue = useSetRecoilState(communityState);
+    
+    useEffect(() => {
+        setCommunityStateValue((prev) => ({
+            ...prev,
+            currentCommmunity: communityData,
+        }))
+    }, [])
 
     if(!communityData) {
         return <NotFound/>
     }
-
-    useEffect(() => {
-        setCommunityStateValue(prev => ({
-            ...prev,
-            currentCommmunity: communityData
-        }))
-    }, [])
 
     return (
         <>

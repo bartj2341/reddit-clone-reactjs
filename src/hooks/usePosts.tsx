@@ -1,46 +1,187 @@
-import { deleteDoc, doc } from 'firebase/firestore';
-import { deleteObject, ref } from 'firebase/storage';
-import React from 'react';
-import { useRecoilState } from 'recoil';
-import { Post, postState } from '../atoms/postsAtom';
-import { firestore, storage } from '../firebase/clientApp';
+import { collection, deleteDoc, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
+import { deleteObject, ref } from "firebase/storage";
+import React, { useEffect } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { authModalState } from "../atoms/authModalAtom";
+import { communityState } from "../atoms/communitiesAtom";
+import { Post, postState, PostVote } from "../atoms/postsAtom";
+import { auth, firestore, storage } from "../firebase/clientApp";
 
 const usePosts = () => {
-    const [postsStateValue, setPostsStateValue] = useRecoilState(postState)
-    
-    const onVote = async () => {};
+	const [user] = useAuthState(auth);
+	const [postsStateValue, setPostsStateValue] = useRecoilState(postState);
+    const currentCommmunity = useRecoilValue(communityState).currentCommmunity;
+    const setAuthModalState = useSetRecoilState(authModalState)
 
-    const onSelectPost = () => {};
+	const onVote = async (post: Post, vote: number, communityId: string) => {
+		// check for a user => if not, open auth modal
+        if(!user?.uid) {
+            setAuthModalState({open: true, view: 'login'})
+            return;
+        }
 
-    const onDeletePost = async(post: Post): Promise<boolean> => {
-        try {
-            // check if image, delete if exists
-            if(post.imageURL) {
-                const imageRef = ref(storage, `posts/${post.id}/image`)
-                await deleteObject(imageRef)
-            }
+		try {
+			const { voteStatus } = post;
+			const existingVote = postsStateValue.postVotes.find(
+				(vote) => vote.postId === post.id
+			);
 
-            // delete post document from firestore
-            const postDocRef = doc(firestore, "posts", post.id!)
-            await deleteDoc(postDocRef)
+			const batch = writeBatch(firestore);
+			const updatedPost = { ...post };
+			const updatedPosts = [ ...postsStateValue.posts ];
+			let updatedPostVotes = [ ...postsStateValue.postVotes ];
+			let voteChange = vote;
 
-            // update recoil state
+			// New vote
+			if (!existingVote) {
+				// create a new postVote document
+				const postVoteRef = doc(
+					collection(firestore, "users", `${user?.uid}/postVotes`)
+				);
+
+				const newVote: PostVote = {
+					id: postVoteRef.id,
+					postId: post.id!,
+					communityId,
+					voteValue: vote, // 1 or -1
+				};
+
+				batch.set(postVoteRef, newVote);
+
+				// add/substract 1 to/from post.voteStatus
+				updatedPost.voteStatus = voteStatus + vote;
+				updatedPostVotes = [...updatedPostVotes, newVote];
+			}
+			// Existing vote - they have voted on the post before
+			else {
+				const postVoteRef = doc(
+					firestore,
+					"users",
+					`${user?.uid}/postVotes/${existingVote.id}`
+				);
+
+				// Removing their vote (up => neutral OR down => neutral)
+				if (existingVote.voteValue === vote) {
+                    voteChange *= -1;
+					// add/substract 1 to/from post.voteStatus
+					updatedPost.voteStatus = voteStatus - vote;
+					updatedPostVotes = updatedPostVotes.filter(
+						(vote) => vote.id !== existingVote.id
+					);
+
+					// delete the postVote document
+                   
+					batch.delete(postVoteRef);
+				}
+				// Flipping their vote (up => down OR down => up)
+				else {
+					// add/substract 2 to/from post.voteStatus
+                    voteChange = 2 * vote;
+					updatedPost.voteStatus = voteStatus + 2 * vote;
+
+					const voteIdx = postsStateValue.postVotes.findIndex(
+						(vote) => vote.id === existingVote.id
+					);
+
+                    if(voteIdx !== -1) {
+                        updatedPostVotes[voteIdx] = {
+                            ...existingVote,
+                            voteValue: vote,
+                        };
+                    }
+
+					// updating the existing postVote document
+					batch.update(postVoteRef, {
+						voteValue: vote,
+					});
+				}
+			}
+
+			// update our post document
+			const postRef = doc(firestore, "posts", post.id!);
+			batch.update(postRef, {
+				voteStatus: voteStatus + voteChange,
+			});
+
+			await batch.commit();
+
+			// update state with updated values
+			const postIdx = postsStateValue.posts.findIndex(
+				(item) => item.id === post.id
+			);
+			updatedPosts[postIdx] = updatedPost;
+			setPostsStateValue((prev) => ({
+				...prev,
+				posts: updatedPosts,
+				postVotes: updatedPostVotes,
+			}));
+		} catch (error) {
+			console.log("onVote error", error);
+		}
+	};
+
+	const onSelectPost = () => {};
+
+	const onDeletePost = async (post: Post): Promise<boolean> => {
+		try {
+			// check if image, delete if exists
+			if (post.imageURL) {
+				const imageRef = ref(storage, `posts/${post.id}/image`);
+				await deleteObject(imageRef);
+			}
+
+			// delete post document from firestore
+			const postDocRef = doc(firestore, "posts", post.id!);
+			await deleteDoc(postDocRef);
+
+			// update recoil state
+			setPostsStateValue((prev) => ({
+				...prev,
+				posts: prev.posts.filter((item) => item.id !== post.id),
+			}));
+			return true;
+		} catch (error) {
+			return false;
+		}
+	};
+
+    const getCommuniyPostVotes = async(communityId: string) => {
+        const postVotesQuery = query(collection(firestore, 'users', `${user?.uid}/postVotes`), where('communityId', '==', communityId))
+
+        const postVoteDocs = await getDocs(postVotesQuery);
+        const postVotes = postVoteDocs.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }))
+
+        setPostsStateValue(prev => ({
+            ...prev,
+            postVotes: postVotes as PostVote[]
+        }))
+    }
+
+    useEffect(() => {
+        if(!user || !currentCommmunity?.id) return;
+        getCommuniyPostVotes(currentCommmunity?.id);
+    }, [user, currentCommmunity])
+
+    useEffect(() => {
+        if(!user) {
+            // Clear user post votes
             setPostsStateValue(prev => ({
                 ...prev,
-                posts: prev.posts.filter(item => item.id !== post.id)
+                postVotes: []
             }))
-            return true;
-        } catch (error) {
-            return false;
-        }       
-    };
+        }
+    }, [user])
 
-    return {
-        postsStateValue,
-        setPostsStateValue,
-        onVote,
-        onSelectPost,
-        onDeletePost
-    }
-}
+	return {
+		postsStateValue,
+		setPostsStateValue,
+		onVote,
+		onSelectPost,
+		onDeletePost,
+	};
+};
 export default usePosts;
