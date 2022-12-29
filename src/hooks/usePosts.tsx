@@ -1,5 +1,14 @@
-import { collection, deleteDoc, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
+import {
+	collection,
+	deleteDoc,
+	doc,
+	getDocs,
+	query,
+	where,
+	writeBatch,
+} from "firebase/firestore";
 import { deleteObject, ref } from "firebase/storage";
+import { useRouter } from "next/router";
 import React, { useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -10,16 +19,23 @@ import { auth, firestore, storage } from "../firebase/clientApp";
 
 const usePosts = () => {
 	const [user] = useAuthState(auth);
+	const router = useRouter();
 	const [postsStateValue, setPostsStateValue] = useRecoilState(postState);
-    const currentCommmunity = useRecoilValue(communityState).currentCommmunity;
-    const setAuthModalState = useSetRecoilState(authModalState)
+	const currentCommmunity = useRecoilValue(communityState).currentCommmunity;
+	const setAuthModalState = useSetRecoilState(authModalState);
 
-	const onVote = async (post: Post, vote: number, communityId: string) => {
+	const onVote = async (
+		event: React.MouseEvent<SVGElement, MouseEvent>,
+		post: Post,
+		vote: number,
+		communityId: string
+	) => {
+		event.stopPropagation();
 		// check for a user => if not, open auth modal
-        if(!user?.uid) {
-            setAuthModalState({open: true, view: 'login'})
-            return;
-        }
+		if (!user?.uid) {
+			setAuthModalState({ open: true, view: "login" });
+			return;
+		}
 
 		try {
 			const { voteStatus } = post;
@@ -29,8 +45,8 @@ const usePosts = () => {
 
 			const batch = writeBatch(firestore);
 			const updatedPost = { ...post };
-			const updatedPosts = [ ...postsStateValue.posts ];
-			let updatedPostVotes = [ ...postsStateValue.postVotes ];
+			const updatedPosts = [...postsStateValue.posts];
+			let updatedPostVotes = [...postsStateValue.postVotes];
 			let voteChange = vote;
 
 			// New vote
@@ -63,7 +79,7 @@ const usePosts = () => {
 
 				// Removing their vote (up => neutral OR down => neutral)
 				if (existingVote.voteValue === vote) {
-                    voteChange *= -1;
+					voteChange *= -1;
 					// add/substract 1 to/from post.voteStatus
 					updatedPost.voteStatus = voteStatus - vote;
 					updatedPostVotes = updatedPostVotes.filter(
@@ -71,25 +87,25 @@ const usePosts = () => {
 					);
 
 					// delete the postVote document
-                   
+
 					batch.delete(postVoteRef);
 				}
 				// Flipping their vote (up => down OR down => up)
 				else {
 					// add/substract 2 to/from post.voteStatus
-                    voteChange = 2 * vote;
+					voteChange = 2 * vote;
 					updatedPost.voteStatus = voteStatus + 2 * vote;
 
 					const voteIdx = postsStateValue.postVotes.findIndex(
 						(vote) => vote.id === existingVote.id
 					);
 
-                    if(voteIdx !== -1) {
-                        updatedPostVotes[voteIdx] = {
-                            ...existingVote,
-                            voteValue: vote,
-                        };
-                    }
+					if (voteIdx !== -1) {
+						updatedPostVotes[voteIdx] = {
+							...existingVote,
+							voteValue: vote,
+						};
+					}
 
 					// updating the existing postVote document
 					batch.update(postVoteRef, {
@@ -116,12 +132,25 @@ const usePosts = () => {
 				posts: updatedPosts,
 				postVotes: updatedPostVotes,
 			}));
+
+			if (postsStateValue.selectedPost) {
+				setPostsStateValue((prev) => ({
+					...prev,
+					selectedPost: updatedPost,
+				}));
+			}
 		} catch (error) {
 			console.log("onVote error", error);
 		}
 	};
 
-	const onSelectPost = () => {};
+	const onSelectPost = (post: Post) => {
+		setPostsStateValue((prev) => ({
+			...prev,
+			selectedPost: post,
+		}));
+		router.push(`/r/${post.communityId}/comments/${post.id}`);
+	};
 
 	const onDeletePost = async (post: Post): Promise<boolean> => {
 		try {
@@ -146,35 +175,38 @@ const usePosts = () => {
 		}
 	};
 
-    const getCommuniyPostVotes = async(communityId: string) => {
-        const postVotesQuery = query(collection(firestore, 'users', `${user?.uid}/postVotes`), where('communityId', '==', communityId))
+	const getCommuniyPostVotes = async (communityId: string) => {
+		const postVotesQuery = query(
+			collection(firestore, "users", `${user?.uid}/postVotes`),
+			where("communityId", "==", communityId)
+		);
 
-        const postVoteDocs = await getDocs(postVotesQuery);
-        const postVotes = postVoteDocs.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        }))
+		const postVoteDocs = await getDocs(postVotesQuery);
+		const postVotes = postVoteDocs.docs.map((doc) => ({
+			id: doc.id,
+			...doc.data(),
+		}));
 
-        setPostsStateValue(prev => ({
-            ...prev,
-            postVotes: postVotes as PostVote[]
-        }))
-    }
+		setPostsStateValue((prev) => ({
+			...prev,
+			postVotes: postVotes as PostVote[],
+		}));
+	};
 
-    useEffect(() => {
-        if(!user || !currentCommmunity?.id) return;
-        getCommuniyPostVotes(currentCommmunity?.id);
-    }, [user, currentCommmunity])
+	useEffect(() => {
+		if (!user || !currentCommmunity?.id) return;
+		getCommuniyPostVotes(currentCommmunity?.id);
+	}, [user, currentCommmunity]);
 
-    useEffect(() => {
-        if(!user) {
-            // Clear user post votes
-            setPostsStateValue(prev => ({
-                ...prev,
-                postVotes: []
-            }))
-        }
-    }, [user])
+	useEffect(() => {
+		if (!user) {
+			// Clear user post votes
+			setPostsStateValue((prev) => ({
+				...prev,
+				postVotes: [],
+			}));
+		}
+	}, [user]);
 
 	return {
 		postsStateValue,
