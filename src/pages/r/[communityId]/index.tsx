@@ -22,9 +22,9 @@ const CommunityPage:React.FC<CommunityPageProps> = ({ communityData }) => {
     useEffect(() => {
         setCommunityStateValue((prev) => ({
             ...prev,
-            currentCommmunity: communityData,
+            currentCommunity: communityData,
         }))
-    }, [])
+    }, [communityData])
 
     if(!communityData) {
         return <NotFound/>

@@ -24,8 +24,8 @@ const SubmitPostPage: React.FC = () => {
 				{user && <NewPostForm user={user} />}
 			</>
 			<>
-				{communityStateValue.currentCommmunity && (
-					<About communityData={communityStateValue.currentCommmunity} />
+				{communityStateValue.currentCommunity && (
+					<About communityData={communityStateValue.currentCommunity} />
 				)}
 			</>
 		</PageContent>

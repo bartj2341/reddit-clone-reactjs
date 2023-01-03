@@ -78,6 +78,7 @@ const useCommunityData = () => {
 			const newSnippet: CommunitySnippet = {
 				communityId: communityData.id,
 				imageURL: communityData.imageURL || "",
+				isModerator: user?.uid === communityData.creatorId,
 			};
 
 			batch.set(
@@ -149,7 +150,7 @@ const useCommunityData = () => {
 
 			setCommunityStateValue((prev) => ({
 				...prev,
-				currentCommmunity: {
+				currentCommunity: {
 					id: communityDoc.id,
 					...communityDoc.data(),
 				} as Community,
@@ -173,10 +174,10 @@ const useCommunityData = () => {
 	useEffect(() => {
 		const { communityId } = router.query;
 
-		if (communityId && !communityStateValue.currentCommmunity) {
+		if (communityId && !communityStateValue.currentCommunity) {
 			getCommunityData(communityId as string);
 		}
-	}, [router.query, communityStateValue.currentCommmunity]);
+	}, [router.query, communityStateValue.currentCommunity]);
 
 	return {
 		// data and functions

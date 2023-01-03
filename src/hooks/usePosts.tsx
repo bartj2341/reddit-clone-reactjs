@@ -21,7 +21,7 @@ const usePosts = () => {
 	const [user] = useAuthState(auth);
 	const router = useRouter();
 	const [postsStateValue, setPostsStateValue] = useRecoilState(postState);
-	const currentCommmunity = useRecoilValue(communityState).currentCommmunity;
+	const currentCommunity = useRecoilValue(communityState).currentCommunity;
 	const setAuthModalState = useSetRecoilState(authModalState);
 
 	const onVote = async (
@@ -194,9 +194,9 @@ const usePosts = () => {
 	};
 
 	useEffect(() => {
-		if (!user || !currentCommmunity?.id) return;
-		getCommuniyPostVotes(currentCommmunity?.id);
-	}, [user, currentCommmunity]);
+		if (!user || !currentCommunity?.id) return;
+		getCommuniyPostVotes(currentCommunity?.id);
+	}, [user, currentCommunity]);
 
 	useEffect(() => {
 		if (!user) {

@@ -47,8 +47,8 @@ const About: React.FC<AboutProps> = ({ communityData }) => {;
 
 			setCommunityStateValue(prev => ({
 				...prev,
-				currentCommmunity: {
-					...prev.currentCommmunity,
+				currentCommunity: {
+					...prev.currentCommunity,
 					imageURL: downloadURL
 				} as Community
 			}))
