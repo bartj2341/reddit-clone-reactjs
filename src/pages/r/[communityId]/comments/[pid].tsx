@@ -14,7 +14,7 @@ import usePosts from "../../../../hooks/usePosts";
 
 const PostPage: React.FC = () => {
 	const [user] = useAuthState(auth);
-	const { postsStateValue, setPostsStateValue, onDeletePost, onVote } =
+	const { postStateValue, setPostStateValue, onDeletePost, onVote } =
 		usePosts();
 	const router = useRouter();
 	const { communityStateValue } = useCommunityData();
@@ -23,7 +23,7 @@ const PostPage: React.FC = () => {
 		try {
 			const postDocRef = doc(firestore, "posts", postId);
 			const postDoc = await getDoc(postDocRef);
-			setPostsStateValue((prev) => ({
+			setPostStateValue((prev) => ({
 				...prev,
 				selectedPost: { id: postDoc.id, ...postDoc.data() } as Post,
 			}));
@@ -34,30 +34,30 @@ const PostPage: React.FC = () => {
 
 	useEffect(() => {
 		const { pid } = router.query;
-		if (pid && !postsStateValue.selectedPost) {
+		if (pid && !postStateValue.selectedPost) {
 			fetchPost(pid as string);
 		}
-	}, [router.query, postsStateValue.selectedPost]);
+	}, [router.query, postStateValue.selectedPost]);
 
 	return (
 		<PageContent>
 			<>
-				{postsStateValue.selectedPost && (
+				{postStateValue.selectedPost && (
 					<PostItem
-						post={postsStateValue.selectedPost}
+						post={postStateValue.selectedPost}
 						onVote={onVote}
 						onDeletePost={onDeletePost}
 						userVoteValue={
-							postsStateValue.postVotes.find(
-								(item) => item.postId === postsStateValue.selectedPost?.id
+							postStateValue.postVotes.find(
+								(item) => item.postId === postStateValue.selectedPost?.id
 							)?.voteValue
 						}
 						userIsCreator={
-							user?.uid === postsStateValue.selectedPost?.creatorId
+							user?.uid === postStateValue.selectedPost?.creatorId
 						}
 					/>
 				)}
-				<Comments user={user as User} selectedPost={postsStateValue.selectedPost} communityId={postsStateValue.selectedPost?.communityId as string}/>
+				<Comments user={user as User} selectedPost={postStateValue.selectedPost} communityId={postStateValue.selectedPost?.communityId as string}/>
 			</>
 			<>
 				{communityStateValue.currentCommunity && (

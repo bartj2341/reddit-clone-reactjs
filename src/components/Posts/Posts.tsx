@@ -17,8 +17,8 @@ const Posts: React.FC<postsProps> = ({ communityData }) => {
 	const [user] = useAuthState(auth);
 	const [loading, setLoading] = useState(false);
 	const {
-		postsStateValue,
-		setPostsStateValue,
+		postStateValue,
+		setPostStateValue,
 		onVote,
 		onDeletePost,
 		onSelectPost,
@@ -40,7 +40,7 @@ const Posts: React.FC<postsProps> = ({ communityData }) => {
 				id: doc.id,
 				...doc.data(),
 			}));
-			setPostsStateValue((prev) => ({
+			setPostStateValue((prev) => ({
 				...prev,
 				posts: posts as Post[],
 			}));
@@ -61,12 +61,12 @@ const Posts: React.FC<postsProps> = ({ communityData }) => {
 				<PostLoader />
 			) : (
 				<Stack>
-					{postsStateValue.posts.map((item) => (
+					{postStateValue.posts.map((item) => (
 						<PostItem
 							key={item.id}
 							post={item}
 							userIsCreator={user?.uid === item.creatorId}
-							userVoteValue={postsStateValue.postVotes.find(vote => vote.postId === item.id)?.voteValue}
+							userVoteValue={postStateValue.postVotes.find(vote => vote.postId === item.id)?.voteValue}
 							onVote={onVote}
 							onSelectPost={onSelectPost}
 							onDeletePost={onDeletePost}

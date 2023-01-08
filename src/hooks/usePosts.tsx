@@ -20,7 +20,7 @@ import { auth, firestore, storage } from "../firebase/clientApp";
 const usePosts = () => {
 	const [user] = useAuthState(auth);
 	const router = useRouter();
-	const [postsStateValue, setPostsStateValue] = useRecoilState(postState);
+	const [postStateValue, setPostStateValue] = useRecoilState(postState);
 	const currentCommunity = useRecoilValue(communityState).currentCommunity;
 	const setAuthModalState = useSetRecoilState(authModalState);
 
@@ -39,14 +39,14 @@ const usePosts = () => {
 
 		try {
 			const { voteStatus } = post;
-			const existingVote = postsStateValue.postVotes.find(
+			const existingVote = postStateValue.postVotes.find(
 				(vote) => vote.postId === post.id
 			);
 
 			const batch = writeBatch(firestore);
 			const updatedPost = { ...post };
-			const updatedPosts = [...postsStateValue.posts];
-			let updatedPostVotes = [...postsStateValue.postVotes];
+			const updatedPosts = [...postStateValue.posts];
+			let updatedPostVotes = [...postStateValue.postVotes];
 			let voteChange = vote;
 
 			// New vote
@@ -96,7 +96,7 @@ const usePosts = () => {
 					voteChange = 2 * vote;
 					updatedPost.voteStatus = voteStatus + 2 * vote;
 
-					const voteIdx = postsStateValue.postVotes.findIndex(
+					const voteIdx = postStateValue.postVotes.findIndex(
 						(vote) => vote.id === existingVote.id
 					);
 
@@ -123,18 +123,18 @@ const usePosts = () => {
 			await batch.commit();
 
 			// update state with updated values
-			const postIdx = postsStateValue.posts.findIndex(
+			const postIdx = postStateValue.posts.findIndex(
 				(item) => item.id === post.id
 			);
 			updatedPosts[postIdx] = updatedPost;
-			setPostsStateValue((prev) => ({
+			setPostStateValue((prev) => ({
 				...prev,
 				posts: updatedPosts,
 				postVotes: updatedPostVotes,
 			}));
 
-			if (postsStateValue.selectedPost) {
-				setPostsStateValue((prev) => ({
+			if (postStateValue.selectedPost) {
+				setPostStateValue((prev) => ({
 					...prev,
 					selectedPost: updatedPost,
 				}));
@@ -145,7 +145,7 @@ const usePosts = () => {
 	};
 
 	const onSelectPost = (post: Post) => {
-		setPostsStateValue((prev) => ({
+		setPostStateValue((prev) => ({
 			...prev,
 			selectedPost: post,
 		}));
@@ -165,7 +165,7 @@ const usePosts = () => {
 			await deleteDoc(postDocRef);
 
 			// update recoil state
-			setPostsStateValue((prev) => ({
+			setPostStateValue((prev) => ({
 				...prev,
 				posts: prev.posts.filter((item) => item.id !== post.id),
 			}));
@@ -187,7 +187,7 @@ const usePosts = () => {
 			...doc.data(),
 		}));
 
-		setPostsStateValue((prev) => ({
+		setPostStateValue((prev) => ({
 			...prev,
 			postVotes: postVotes as PostVote[],
 		}));
@@ -201,7 +201,7 @@ const usePosts = () => {
 	useEffect(() => {
 		if (!user) {
 			// Clear user post votes
-			setPostsStateValue((prev) => ({
+			setPostStateValue((prev) => ({
 				...prev,
 				postVotes: [],
 			}));
@@ -209,8 +209,8 @@ const usePosts = () => {
 	}, [user]);
 
 	return {
-		postsStateValue,
-		setPostsStateValue,
+		postStateValue,
+		setPostStateValue,
 		onVote,
 		onSelectPost,
 		onDeletePost,

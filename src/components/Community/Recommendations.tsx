@@ -111,6 +111,7 @@ import {
                               borderRadius="full"
                               boxSize="28px"
                               mr={2}
+                              alt=""
                             />
                           ) : (
                             <Icon
